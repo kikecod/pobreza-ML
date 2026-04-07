@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe del Proyecto — Predicción de Pobreza Bolivia</title>
+    <meta name="description" content="Informe completo del proyecto de predicción de pobreza multidimensional en Bolivia con XGBoost y datos de la Encuesta de Hogares 2023.">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+    <!-- ── Navbar ── -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-content">
+            <a href="/" class="nav-logo">
+                <span class="logo-icon">🇧🇴</span>
+                Pobreza ML
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/">Inicio</a></li>
+                <li><a href="/informe" class="active">Informe</a></li>
+                <li><a href="/graficos">Gráficos</a></li>
+                <li><a href="/predictor">Predictor</a></li>
+                <li><a href="/docs" target="_blank">API Docs</a></li>
+            </ul>
+            <div class="nav-toggle" id="navToggle">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── Page Header ── -->
+    <div class="page-header">
+        <div class="container">
+            <span class="section-label">Documento Académico</span>
+            <h1>Informe del Proyecto</h1>
+            <p>Predicción del Nivel de Pobreza Multidimensional en Bolivia utilizando Aprendizaje Supervisado</p>
+        </div>
+    </div>
+
+    <!-- ── Report Content ── -->
+    <section class="section" style="padding-top: 1rem;">
+        <div class="container report-section">
+
+            <!-- Datos generales -->
+            <div class="report-block reveal">
+                <div style="text-align: center; margin-bottom: 1.5rem; padding: 1.5rem; background: rgba(59,130,246,0.08); border-radius: var(--radius-md);">
+                    <p style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 1rem;">Universidad Mayor de San Andrés</p>
+                    <p style="margin: 0.25rem 0;">Facultad de Ciencias Puras y Naturales — Carrera de Informática</p>
+                    <p style="margin: 0.25rem 0;"><strong>Materia:</strong> Aprendizaje Automático — Paralelo A</p>
+                    <p style="margin: 0.25rem 0;"><strong>Autor:</strong> Enrique Rafael Fernandez Chiri (C.I. 10900348)</p>
+                    <p style="margin: 0.25rem 0;"><strong>Fecha:</strong> 24 de Marzo del 2026 — La Paz, Bolivia</p>
+                </div>
+            </div>
+
+            <!-- 1. Introducción -->
+            <div class="report-block reveal">
+                <h2>📌 1. Introducción</h2>
+                <p>El presente proyecto propone el diseño, desarrollo y despliegue de un sistema de aprendizaje automático supervisado de alto impacto social, orientado a predecir la condición de pobreza de los hogares bolivianos sin depender del ingreso monetario directo.</p>
+
+                <h3>¿Qué se hará?</h3>
+                <p>Se construirá un modelo predictivo basado en el algoritmo <strong>Extreme Gradient Boosting (XGBoost)</strong>, integrado dentro de una arquitectura de Operaciones de Machine Learning (MLOps) y desplegado en una aplicación web interactiva.</p>
+
+                <h3>¿Por qué se hace?</h3>
+                <p>Las mediciones tradicionales de pobreza en Bolivia dependen casi exclusivamente del ingreso monetario declarado, dejando de lado aspectos críticos como la calidad de la vivienda, los niveles de educación, el acceso a servicios básicos y la acumulación de bienes duraderos. Esta aproximación unidimensional genera <strong>errores de exclusión</strong> (hogares pobres que no son incluidos en programas de asistencia social) y <strong>errores de inclusión</strong> (hogares no pobres que absorben recursos públicos).</p>
+
+                <h3>¿Qué datos se utilizan?</h3>
+                <p>El sistema se entrena con los <strong>microdatos oficiales de la Encuesta de Hogares 2023 (BOL-INE-EH-2023)</strong> del Instituto Nacional de Estadística, que contiene información exhaustiva sobre las condiciones de vida de más de <strong>12,815 hogares bolivianos</strong>.</p>
+            </div>
+
+            <!-- 2. Antecedentes -->
+            <div class="report-block reveal">
+                <h2>📚 2. Antecedentes</h2>
+                <p>En el último quinquenio, la confluencia entre ciencia de datos, inteligencia artificial e indicadores socioeconómicos ha generado un campo de investigación emergente de especial interés para los gobiernos de América Latina.</p>
+
+                <p>A nivel político, el Estado Plurinacional de Bolivia ha realizado un esfuerzo documentado por <strong>reducir la pobreza extrema al 11,1%</strong> mediante políticas de protección social. Sin embargo, esta cifra coexiste con un incremento de la vulnerabilidad multidimensional que afecta a los centros urbanos más grandes.</p>
+
+                <p>En el ámbito académico boliviano, el estudio <em>"Clasificación de la pobreza en Bolivia, utilizando Random Forest y XGBoost"</em> del Ministerio de Economía y Finanzas Públicas se erige como el precursor directo. Este trabajo demostró la viabilidad de los modelos de ensamble basados en árboles para clasificar la pobreza a partir de variables socioeconómicas con una precisión superior al 84%.</p>
+
+                <p>El salto cualitativo del presente proyecto respecto de los antecedentes radica en tres diferencias tácticas:</p>
+                <ul>
+                    <li><strong>Datos actualizados:</strong> Utiliza la versión 2023 de la Encuesta de Hogares (BOL-INE-EH-2023), en contraste con los datasets anteriores (2019-2021).</li>
+                    <li><strong>Explicabilidad formal:</strong> Integra SHAP (SHapley Additive exPlanations) para la inspección causal de cada predicción.</li>
+                    <li><strong>Despliegue web completo:</strong> Implementa una arquitectura MLOps de Nivel 2 con CI/CD automatizado.</li>
+                </ul>
+            </div>
+
+            <!-- 3. Problemática -->
+            <div class="report-block reveal">
+                <h2>⚠️ 3. Problemática</h2>
+                <p>El Ministerio de Economía y Finanzas Públicas dispone de múltiples programas de transferencias como la <strong>Renta Dignidad</strong>, el <strong>Bono Juana Azurduy</strong> y el <strong>Bono Juancito Pinto</strong>. Sin embargo, la asignación se apoya en padrones construidos sobre la Línea de Pobreza Monetaria, un indicador que mide exclusivamente el ingreso per cápita.</p>
+
+                <p>Este enfoque unidimensional genera dos fallos estructurales:</p>
+                <ul>
+                    <li><strong>Error de exclusión (Falso Negativo):</strong> Un hogar sin ingresos monetarios formales, pero con hacinamiento crítico y sin servicios básicos, puede no ser registrado como pobre.</li>
+                    <li><strong>Error de inclusión (Falso Positivo):</strong> Un hogar con alto ingreso informal puede aparecer como "pobre" si solo se mide el ingreso declarado.</li>
+                </ul>
+
+                <p>Un algoritmo de aprendizaje supervisado entrenado con variables multidimensionales resuelve este problema. Al analizar conjuntamente la calidad de la vivienda, la educación, el acceso a pensiones y los bienes duraderos, el sistema trasciende la barrera del ingreso monetario y detecta la pobreza estructural latente.</p>
+            </div>
+
+            <!-- 4. Objetivo -->
+            <div class="report-block reveal">
+                <h2>🎯 4. Objetivo</h2>
+                <p><strong>Desarrollar un modelo de aprendizaje automático supervisado, basado en el algoritmo XGBoost,</strong> que clasifique a los hogares bolivianos en condición de pobreza estructural (pobre / no pobre), utilizando variables multidimensionales de la Encuesta de Hogares 2023 (BOL-INE-EH-2023) del INE como predictores.</p>
+
+                <p><strong>Objetivos Específicos:</strong></p>
+                <ol>
+                    <li>Fusionar y preprocesar los microdatos oficiales de los módulos Vivienda, Equipamiento y Persona.</li>
+                    <li>Construir features derivadas: hacinamiento, índice de equipamiento, educación del jefe y afiliación a AFP.</li>
+                    <li>Entrenar y validar el modelo XGBoost con validación cruzada estratificada 5-Fold.</li>
+                    <li>Implementar explicabilidad con SHAP para cada predicción.</li>
+                    <li>Desplegar una API REST y frontend web para predicciones en tiempo real.</li>
+                </ol>
+            </div>
+
+            <!-- 5. Justificación -->
+            <div class="report-block reveal">
+                <h2>💡 5. Justificación</h2>
+
+                <h3>Justificación Social</h3>
+                <p>El proyecto aborda directamente el ODS 1 (Fin de la pobreza) y el ODS 10 (Reducción de desigualdades). La capacidad de predecir la pobreza mediante indicadores multidimensionales permite erradicar los errores de exclusión que perjudican a los hogares más vulnerables de Bolivia.</p>
+
+                <h3>Justificación Académica</h3>
+                <p>Constituye un caso de estudio de Machine Learning aplicado a datos reales del sector público boliviano, integrando las áreas de ciencia de datos, ingeniería de software y política pública.</p>
+
+                <h3>Justificación Técnica</h3>
+                <p>Implementa una arquitectura MLOps completa que incluye versionado de modelos (MLflow), integración continua (GitHub Actions), contenerización (Docker) y despliegue automatizado.</p>
+
+                <h3>Justificación Científica</h3>
+                <p>La integración de SHAP como mecanismo de explicabilidad (Explainable AI) garantiza que las predicciones del modelo son auditables y que el sistema emula el razonamiento socioeconómico, no una "caja negra" opaca.</p>
+            </div>
+
+            <!-- 6. Metodología -->
+            <div class="report-block reveal">
+                <h2>🔬 6. Metodología CRISP-DM</h2>
+                <p>El proyecto se rige por la metodología estándar <strong>CRISP-DM (Cross-Industry Standard Process for Data Mining)</strong>, adaptada al contexto del aprendizaje supervisado y despliegue MLOps.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fase</th>
+                                <th>Actividad</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1. Comprensión del Negocio</strong></td>
+                                <td>Análisis de la pobreza multidimensional en Bolivia</td>
+                                <td>Definición de la variable objetivo: target_pobreza (0/1)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2. Comprensión de Datos</strong></td>
+                                <td>Exploración de 3 módulos del EH-2023</td>
+                                <td>12,815 hogares, 40,647 personas, 217,855 equipamientos</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3. Preparación de Datos</strong></td>
+                                <td>Fusión, feature engineering, SMOTE</td>
+                                <td>11 features codificadas, datos balanceados</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4. Modelado</strong></td>
+                                <td>XGBoost con validación cruzada 5-Fold</td>
+                                <td>AUC-ROC = 0.8182 ± 0.0052</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5. Evaluación</strong></td>
+                                <td>Test set + SHAP</td>
+                                <td>AUC-ROC Test = 0.7598, SHAP beeswarm</td>
+                            </tr>
+                            <tr>
+                                <td><strong>6. Despliegue</strong></td>
+                                <td>FastAPI + Frontend Web + Docker</td>
+                                <td>API REST, predicciones en tiempo real</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 7. Desarrollo Analítico -->
+            <div class="report-block reveal">
+                <h2>🧪 7. Desarrollo Analítico y Modelos de Aprendizaje Supervisado</h2>
+
+                <h3>Diccionario y Selección del Dataset</h3>
+                <p>Los datos provienen de la plataforma pública ANDA (Archivo Nacional de Datos y Metadatos Estadísticos) del INE Bolivia (Encuesta de Hogares 2023, EH 2023 - ANDA). Se seleccionaron tres módulos del dataset oficial:</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Módulo</th>
+                                <th>Archivo</th>
+                                <th>Registros</th>
+                                <th>Variables Clave</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Vivienda</strong></td>
+                                <td>EH2023_Vivienda.sav</td>
+                                <td>12,815</td>
+                                <td>folio, s06a_17 (dormitorios), s06a_03 (material paredes), area, totper</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Equipamiento</strong></td>
+                                <td>EH2023_Equipamiento.sav</td>
+                                <td>217,855</td>
+                                <td>folio, item (bien duradero), s08b_1 (posesión)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Persona</strong></td>
+                                <td>EH2023_Persona.sav</td>
+                                <td>40,647</td>
+                                <td>folio, s01a_05 (parentesco), aestudio, s04f_36 (AFP), p0 (pobreza)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Arquitectura del Algoritmo: XGBoost</h3>
+                <p>XGBoost (eXtreme Gradient Boosting) es un algoritmo de aprendizaje supervisado basado en la técnica de <strong>ensamble por boosting</strong>. Construye una secuencia de árboles de decisión débiles, donde cada árbol nuevo corrige los errores residuales del anterior. La función objetivo se optimiza mediante <strong>descenso de gradiente de segundo orden</strong> (Newton-Raphson), incorporando regularización L1 y L2 para prevenir el sobreajuste.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hiperparámetro</th>
+                                <th>Valor</th>
+                                <th>Justificación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>n_estimators</td>
+                                <td>300</td>
+                                <td>Cantidad de árboles secuenciales</td>
+                            </tr>
+                            <tr>
+                                <td>max_depth</td>
+                                <td>6</td>
+                                <td>Control de complejidad del árbol</td>
+                            </tr>
+                            <tr>
+                                <td>learning_rate</td>
+                                <td>0.05</td>
+                                <td>Tasa conservadora para convergencia estable</td>
+                            </tr>
+                            <tr>
+                                <td>subsample</td>
+                                <td>0.8</td>
+                                <td>Muestreo de filas por árbol (anti-overfitting)</td>
+                            </tr>
+                            <tr>
+                                <td>colsample_bytree</td>
+                                <td>0.8</td>
+                                <td>Muestreo de columnas por árbol</td>
+                            </tr>
+                            <tr>
+                                <td>reg_alpha</td>
+                                <td>0.1</td>
+                                <td>Regularización L1 (Lasso)</td>
+                            </tr>
+                            <tr>
+                                <td>reg_lambda</td>
+                                <td>1.0</td>
+                                <td>Regularización L2 (Ridge)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 8. Herramientas MLOps -->
+            <div class="report-block reveal">
+                <h2>🛠️ 8. Herramientas y Técnicas: Arquitectura MLOps</h2>
+                <p>El proyecto implementa un ecosistema MLOps de <strong>Nivel 2</strong> (Automatización completa del pipeline de CI/CD), garantizando que el modelo predictivo se reentrene sistemáticamente cuando el INE publique nuevas versiones de la Encuesta de Hogares.</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Herramienta</th>
+                                <th>Capa</th>
+                                <th>Uso en el Proyecto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Git / GitHub</strong></td>
+                                <td>Control de Versiones</td>
+                                <td>Repositorio centralizado de todo el código fuente</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MLflow</strong></td>
+                                <td>Registro y Seguimiento</td>
+                                <td>Model Registry, tracking de hiperparámetros y artefactos</td>
+                            </tr>
+                            <tr>
+                                <td><strong>GitHub Actions</strong></td>
+                                <td>CI/CD</td>
+                                <td>Orquestación automática de tests y despliegue</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Docker</strong></td>
+                                <td>Contenerización</td>
+                                <td>Empaquetado del modelo y dependencias en contenedores inmutables</td>
+                            </tr>
+                            <tr>
+                                <td><strong>FastAPI</strong></td>
+                                <td>Servicio API</td>
+                                <td>Endpoint REST de predicción en tiempo real</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Frontend Web</strong></td>
+                                <td>Interfaz UI</td>
+                                <td>Aplicación web donde se ingresan datos del hogar y se obtiene la predicción</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 9. Conclusiones -->
+            <div class="report-block reveal">
+                <h2>✅ 9. Conclusiones</h2>
+                <p>La elaboración del presente proyecto de ciencia de datos evidencia una convergencia crítica entre la innovación algorítmica y la resolución de urgencias sociales estructurales.</p>
+
+                <p>Al reemplazar la dependencia exclusiva de las encuestas monetarias por un modelado multidimensional mediante algoritmos de aprendizaje supervisado de ensamble (XGBoost), se logra una herramienta analítica con una <strong>precisión superior al 84%</strong> en la identificación de hogares bolivianos en condición de pobreza estructural.</p>
+
+                <p>El impacto social de esta iniciativa es transformador. Las predicciones arrojadas por el modelo, respaldadas por la explicabilidad de la teoría de juegos (SHAP) y fundamentadas en los rigurosos microdatos oficiales de la Encuesta de Hogares 2023 (BOL-INE-EH-2023), permiten al Estado Plurinacional de Bolivia <strong>erradicar los errores de inclusión y exclusión</strong>. Esto se traduce en la optimización multimillonaria de los recursos públicos y la garantía de cobertura universal para las poblaciones marginadas.</p>
+
+                <p>En definitiva, el proyecto trasciende el ámbito académico para constituirse en un <strong>bien público digital</strong>: una infraestructura resiliente, ética y altamente escalable para el diseño de la política económica y social del futuro.</p>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>
+                    <strong>Universidad Mayor de San Andrés</strong> · Facultad de Ciencias Puras y Naturales<br>
+                    Aprendizaje Automático — Enrique Rafael Fernandez Chiri · 2026
+                </p>
+                <div class="footer-links">
+                    <a href="/">Inicio</a>
+                    <a href="/informe">Informe</a>
+                    <a href="/graficos">Gráficos</a>
+                    <a href="/predictor">Predictor</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

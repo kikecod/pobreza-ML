@@ -16,17 +16,18 @@ Este script orquesta la ejecucion secuencial de todas las fases:
     B.1 - Instanciacion del modelo XGBoost
     B.2 - Validacion cruzada estratificada
     B.3 - Entrenamiento final y evaluacion
-    B.4 - Graficos ROC y SHAP beeswarm
+    B.4 - Graficos de evaluacion, explicabilidad y analisis
     B.5 - Serializacion del modelo entrenado (.pkl)
 
 Uso:
-    python main.py
+    python3 main.py
 """
 
 import sys
 import io
 import warnings
 import joblib
+import numpy as np
 
 # Forzar UTF-8 en stdout para evitar errores de codificacion en Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -45,7 +46,20 @@ from src.data_loading import (
 from src.feature_engineering import construir_features, seleccionar_y_codificar
 from src.preprocessing import separar_y_balancear
 from src.modeling import crear_modelo_xgb, validacion_cruzada, entrenar_y_evaluar
-from src.visualization import graficar_curva_roc, graficar_shap_beeswarm
+from src.visualization import (
+    graficar_curva_roc,
+    graficar_shap_beeswarm,
+    graficar_matriz_confusion,
+    graficar_importancia_features,
+    graficar_distribucion_probabilidades,
+    graficar_curva_precision_recall,
+    graficar_shap_bar,
+    graficar_shap_waterfall,
+    graficar_distribucion_target,
+    graficar_comparacion_cv_test,
+    graficar_correlacion_features,
+    graficar_boxplot_por_clase,
+)
 
 
 def main():
@@ -89,6 +103,12 @@ def main():
     print("\n>> A.3 Seleccionando variables y aplicando One-Hot Encoding ...")
     X, y = seleccionar_y_codificar(df)
 
+    # ── Graficos exploratorios (pre-modelado) ──
+    print("\n>> A.3b Generando graficos exploratorios ...")
+    graficar_distribucion_target(y)
+    graficar_correlacion_features(X)
+    graficar_boxplot_por_clase(X, y)
+
     # A.4 Separacion y SMOTE
     print("\n>> A.4 Separacion Train/Test + Balanceo SMOTE ...")
     X_train, X_test, y_train, y_test = separar_y_balancear(X, y)
@@ -113,11 +133,25 @@ def main():
     modelo, y_pred_proba = entrenar_y_evaluar(
         modelo, X_train, y_train, X_test, y_test
     )
+    y_pred = modelo.predict(X_test)
+    auc_test = float(np.round(
+        __import__('sklearn.metrics', fromlist=['roc_auc_score'])
+        .roc_auc_score(y_test, y_pred_proba), 4
+    ))
 
-    # B.4 Graficos
-    print("\n>> B.4 Generando graficos ...")
+    # B.4 Graficos de evaluacion y explicabilidad
+    print("\n>> B.4 Generando graficos de evaluacion ...")
     graficar_curva_roc(y_test, y_pred_proba)
+    graficar_matriz_confusion(y_test, y_pred)
+    graficar_importancia_features(modelo, X_test)
+    graficar_distribucion_probabilidades(y_test, y_pred_proba)
+    graficar_curva_precision_recall(y_test, y_pred_proba)
+    graficar_comparacion_cv_test(auc_cv, auc_test)
+
+    print("\n>> B.4 Generando graficos de explicabilidad (SHAP) ...")
     graficar_shap_beeswarm(modelo, X_test)
+    graficar_shap_bar(modelo, X_test)
+    graficar_shap_waterfall(modelo, X_test, idx=0)
 
     # B.5 Serializar modelo entrenado
     print("\n>> B.5 Guardando modelo entrenado ...")
@@ -131,6 +165,19 @@ def main():
     print("  [OK] PIPELINE COMPLETADO EXITOSAMENTE")
     print(f"  Resultados guardados en: {OUTPUT_DIR}")
     print(f"  Modelo listo para API:   {MODEL_PATH}")
+    print(f"\n  Graficos generados:")
+    print(f"    - curva_roc.png")
+    print(f"    - matriz_confusion.png")
+    print(f"    - importancia_features.png")
+    print(f"    - distribucion_probabilidades.png")
+    print(f"    - curva_precision_recall.png")
+    print(f"    - comparacion_cv_test.png")
+    print(f"    - shap_beeswarm.png")
+    print(f"    - shap_importancia_barras.png")
+    print(f"    - shap_waterfall.png")
+    print(f"    - distribucion_target.png")
+    print(f"    - correlacion_features.png")
+    print(f"    - boxplot_por_clase.png")
     print(f"{'='*60}")
 
 

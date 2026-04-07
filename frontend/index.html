@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predicción de Pobreza Multidimensional - Bolivia 2023</title>
+    <meta name="description" content="Sistema de predicción de pobreza multidimensional en Bolivia usando XGBoost y datos de la Encuesta de Hogares 2023 (BOL-INE-EH-2023).">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+    <!-- ── Navbar ── -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-content">
+            <a href="/" class="nav-logo">
+                <span class="logo-icon">🇧🇴</span>
+                Pobreza ML
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/" class="active">Inicio</a></li>
+                <li><a href="/informe">Informe</a></li>
+                <li><a href="/graficos">Gráficos</a></li>
+                <li><a href="/predictor">Predictor</a></li>
+                <li><a href="/docs" target="_blank">API Docs</a></li>
+            </ul>
+            <div class="nav-toggle" id="navToggle">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── Hero ── -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-badge">🤖 Machine Learning · XGBoost · SHAP</div>
+            <h1>Predicción de <span class="highlight">Pobreza Multidimensional</span> en Bolivia</h1>
+            <p class="subtitle">
+                Sistema de aprendizaje supervisado entrenado con microdatos oficiales
+                de la Encuesta de Hogares 2023 (BOL-INE-EH-2023) para la identificación
+                de hogares en condición de pobreza estructural.
+            </p>
+            <div class="hero-actions">
+                <a href="/predictor" class="btn btn-primary">
+                    ⚡ Probar el Predictor
+                </a>
+                <a href="/informe" class="btn btn-secondary">
+                    📄 Ver Informe Completo
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Stats ── -->
+    <section class="section">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card reveal">
+                    <div class="stat-value" data-count="12815" data-suffix="">12,815</div>
+                    <div class="stat-label">Hogares Analizados</div>
+                </div>
+                <div class="stat-card reveal">
+                    <div class="stat-value" data-count="81.82" data-suffix="%" data-decimals="2">81.82%</div>
+                    <div class="stat-label">AUC-ROC (Validación Cruzada)</div>
+                </div>
+                <div class="stat-card reveal">
+                    <div class="stat-value" data-count="30.98" data-suffix="%" data-decimals="2">30.98%</div>
+                    <div class="stat-label">Tasa de Pobreza Detectada</div>
+                </div>
+                <div class="stat-card reveal">
+                    <div class="stat-value" data-count="11" data-suffix="">11</div>
+                    <div class="stat-label">Features Predictoras</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── ¿Qué es este proyecto? ── -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Acerca del Proyecto</span>
+                <h2>¿Qué buscamos lograr?</h2>
+                <p>Diseñar un sistema de IA que identifique hogares en condición de pobreza estructural sin depender del ingreso monetario directo.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="card reveal">
+                    <div class="card-icon" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-blue);">🎯</div>
+                    <h3>Predicción Precisa</h3>
+                    <p>Modelo XGBoost con AUC-ROC de 0.82, capaz de clasificar hogares como pobres o no pobres utilizando variables estructurales: hacinamiento, educación del jefe de hogar, equipamiento y material de vivienda.</p>
+                </div>
+
+                <div class="card reveal">
+                    <div class="card-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-green);">🔍</div>
+                    <h3>Explicabilidad (XAI)</h3>
+                    <p>Implementación de SHAP (SHapley Additive exPlanations) para explicar cada predicción. El modelo no actúa como "caja negra" — cada resultado es interpretable y auditable por tomadores de decisión.</p>
+                </div>
+
+                <div class="card reveal">
+                    <div class="card-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent-purple);">📊</div>
+                    <h3>Datos Oficiales del INE</h3>
+                    <p>Entrenado con los microdatos oficiales de la Encuesta de Hogares 2023 (BOL-INE-EH-2023) del Instituto Nacional de Estadística. Tres módulos fusionados: Vivienda, Equipamiento y Persona.</p>
+                </div>
+
+                <div class="card reveal">
+                    <div class="card-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber);">⚙️</div>
+                    <h3>Arquitectura MLOps</h3>
+                    <p>Pipeline automatizado con CI/CD: GitHub Actions, Docker, MLflow y FastAPI. El modelo se reentrena automáticamente cuando el INE publique nuevos datos de la Encuesta de Hogares.</p>
+                </div>
+
+                <div class="card reveal">
+                    <div class="card-icon" style="background: rgba(236, 72, 153, 0.15); color: var(--accent-pink);">🏥</div>
+                    <h3>Impacto Social</h3>
+                    <p>Las predicciones permiten al Estado optimizar la asignación de la Renta Dignidad y otros programas sociales, eliminando errores de inclusión/exclusión en la focalización de beneficiarios.</p>
+                </div>
+
+                <div class="card reveal">
+                    <div class="card-icon" style="background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan);">🌐</div>
+                    <h3>API REST en Tiempo Real</h3>
+                    <p>Endpoint de predicción con FastAPI que recibe los datos del hogar y retorna la clasificación con probabilidad, nivel de confianza e interpretación — listo para integración gubernamental.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Metodología CRISP-DM ── -->
+    <section class="section" style="background: var(--bg-secondary); border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Metodología</span>
+                <h2>Pipeline CRISP-DM</h2>
+                <p>El proyecto sigue la metodología estándar de minería de datos aplicada en 6 fases.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="card reveal">
+                    <h4 style="color: var(--accent-blue-light); margin-bottom: 0.5rem;">Fase 1 · Comprensión del Negocio</h4>
+                    <p>Análisis de la problemática de pobreza multidimensional en Bolivia. Definición de la pobreza estructural como variable objetivo binaria.</p>
+                </div>
+                <div class="card reveal">
+                    <h4 style="color: var(--accent-green); margin-bottom: 0.5rem;">Fase 2 · Comprensión de Datos</h4>
+                    <p>Exploración de los microdatos de la EH-2023: 12,815 hogares, 40,647 personas, 217,855 registros de equipamiento. Identificación de 11 features clave.</p>
+                </div>
+                <div class="card reveal">
+                    <h4 style="color: var(--accent-purple); margin-bottom: 0.5rem;">Fase 3 · Preparación de Datos</h4>
+                    <p>Fusión de 3 datasets por folio, construcción de índice de equipamiento, hacinamiento, codificación One-Hot y balanceo SMOTE.</p>
+                </div>
+                <div class="card reveal">
+                    <h4 style="color: var(--accent-amber); margin-bottom: 0.5rem;">Fase 4 · Modelado</h4>
+                    <p>XGBoost con 300 árboles, max_depth=6, learning_rate=0.05. Validación cruzada estratificada 5-Fold con AUC-ROC = 0.8182 ± 0.0052.</p>
+                </div>
+                <div class="card reveal">
+                    <h4 style="color: var(--accent-pink); margin-bottom: 0.5rem;">Fase 5 · Evaluación</h4>
+                    <p>AUC-ROC en test: 0.7598. Explicabilidad global con SHAP beeswarm, importancia de features y análisis de predicciones individuales con waterfall.</p>
+                </div>
+                <div class="card reveal">
+                    <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Fase 6 · Despliegue</h4>
+                    <p>API REST con FastAPI, frontend web interactivo, serialización del modelo (.pkl), y arquitectura MLOps con CI/CD automatizado.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Variables del Modelo ── -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Variables</span>
+                <h2>Features del Modelo XGBoost</h2>
+                <p>Las 11 variables predictoras seleccionadas de los microdatos de la Encuesta de Hogares 2023.</p>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Variable</th>
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td><strong>hacinamiento</strong></td>
+                            <td>Numérica</td>
+                            <td>Ratio miembros del hogar / dormitorios</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td><strong>anios_educ_jefe</strong></td>
+                            <td>Numérica</td>
+                            <td>Años de escolaridad del jefe/a del hogar</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td><strong>indice_equipamiento</strong></td>
+                            <td>Numérica</td>
+                            <td>Proporción de 17 bienes duraderos que posee el hogar [0–1]</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td><strong>afiliacion_afp</strong></td>
+                            <td>Binaria</td>
+                            <td>1 si el jefe aporta actualmente a la Gestora/AFP</td>
+                        </tr>
+                        <tr>
+                            <td>5–10</td>
+                            <td><strong>material_vivienda_*</strong></td>
+                            <td>Dummy</td>
+                            <td>6 dummies del material de paredes (base: adobe/tapial)</td>
+                        </tr>
+                        <tr>
+                            <td>11</td>
+                            <td><strong>area_urbana</strong></td>
+                            <td>Binaria</td>
+                            <td>1 si el hogar es urbano, 0 si es rural</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── CTA ── -->
+    <section class="section" style="text-align: center;">
+        <div class="container">
+            <h2 style="margin-bottom: 1rem;">¿Quieres probar el modelo?</h2>
+            <p style="margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+                Ingresa los datos de un hogar boliviano y obtén una predicción en tiempo real con nivel de confianza.
+            </p>
+            <div class="hero-actions">
+                <a href="/predictor" class="btn btn-primary">⚡ Ir al Predictor</a>
+                <a href="/graficos" class="btn btn-secondary">📊 Ver Gráficos</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>
+                    <strong>Universidad Mayor de San Andrés</strong> · Facultad de Ciencias Puras y Naturales<br>
+                    Aprendizaje Automático — Enrique Rafael Fernandez Chiri · 2026
+                </p>
+                <div class="footer-links">
+                    <a href="/">Inicio</a>
+                    <a href="/informe">Informe</a>
+                    <a href="/graficos">Gráficos</a>
+                    <a href="/predictor">Predictor</a>
+                    <a href="/docs" target="_blank">API</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

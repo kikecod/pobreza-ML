@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictor de Pobreza — Predicción de Pobreza Bolivia</title>
+    <meta name="description" content="Predictor interactivo de pobreza multidimensional para hogares bolivianos usando el modelo XGBoost entrenado con la EH-2023.">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+    <!-- ── Navbar ── -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-content">
+            <a href="/" class="nav-logo">
+                <span class="logo-icon">🇧🇴</span>
+                Pobreza ML
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/">Inicio</a></li>
+                <li><a href="/informe">Informe</a></li>
+                <li><a href="/graficos">Gráficos</a></li>
+                <li><a href="/predictor" class="active">Predictor</a></li>
+                <li><a href="/docs" target="_blank">API Docs</a></li>
+            </ul>
+            <div class="nav-toggle" id="navToggle">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── Page Header ── -->
+    <div class="page-header">
+        <div class="container">
+            <span class="section-label">Modelo en Producción</span>
+            <h1>⚡ Predictor de Pobreza</h1>
+            <p>Ingresa los datos de un hogar boliviano y obtén una predicción en tiempo real con nivel de confianza.</p>
+        </div>
+    </div>
+
+    <!-- ── Predictor Form ── -->
+    <section class="section" style="padding-top: 1rem;">
+        <div class="container">
+            <div class="predictor-form">
+                <div class="report-block">
+                    <h2 style="border: none; padding: 0; margin-bottom: 1.5rem;">📋 Datos del Hogar</h2>
+
+                    <form id="predictorForm">
+                        <div class="form-grid">
+                            <!-- Hacinamiento -->
+                            <div class="form-group">
+                                <label for="totalPersonas">Total de personas en el hogar</label>
+                                <input type="number" id="totalPersonas" min="1" max="20" value="4" required>
+                                <span class="help-text">Todos los miembros que viven en la vivienda</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="dormitorios">Dormitorios exclusivos para dormir</label>
+                                <input type="number" id="dormitorios" min="1" max="15" value="2" required>
+                                <span class="help-text">Habitaciones usadas solo para dormir</span>
+                            </div>
+
+                            <!-- Educación -->
+                            <div class="form-group">
+                                <label for="aniosEduc">Años de educación del jefe/a del hogar</label>
+                                <input type="number" id="aniosEduc" min="0" max="25" value="11" required>
+                                <span class="help-text">0 = sin educación, 6 = primaria, 12 = bachillerato, 17 = licenciatura</span>
+                            </div>
+
+                            <!-- Equipamiento -->
+                            <div class="form-group">
+                                <label for="equipamiento">Bienes duraderos que posee el hogar</label>
+                                <input type="number" id="equipamiento" min="0" max="17" value="8" required>
+                                <span class="help-text">De 17 bienes: cocina, refrigerador, TV, computadora, celular, lavadora, etc. (0-17)</span>
+                            </div>
+
+                            <!-- AFP -->
+                            <div class="form-group">
+                                <label for="afp">¿El jefe aporta a AFP/Gestora de Pensiones?</label>
+                                <select id="afp" required>
+                                    <option value="0">No</option>
+                                    <option value="1">Sí</option>
+                                </select>
+                                <span class="help-text">Afiliación activa al sistema de pensiones</span>
+                            </div>
+
+                            <!-- Material Vivienda -->
+                            <div class="form-group">
+                                <label for="material">Material de las paredes</label>
+                                <select id="material" required>
+                                    <option value="adobe">Adobe / Tapial</option>
+                                    <option value="ladrillo">Ladrillo / Bloque / Cemento / Hormigón</option>
+                                    <option value="madera">Madera</option>
+                                    <option value="cana">Caña / Palma / Tronco</option>
+                                    <option value="piedra">Piedra</option>
+                                    <option value="tabique">Tabique / Quinche</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+
+                            <!-- Área -->
+                            <div class="form-group">
+                                <label for="area">Ubicación del hogar</label>
+                                <select id="area" required>
+                                    <option value="0">Rural</option>
+                                    <option value="1">Urbana</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center;">
+                            <button type="submit" class="btn btn-primary" style="padding: 14px 48px; font-size: 1.05rem;" id="btnPredict">
+                                🔮 Predecir Pobreza
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Loading -->
+                    <div class="spinner" id="spinner"></div>
+
+                    <!-- Error -->
+                    <div id="errorMsg" style="display: none; max-width: 600px; margin: 1.5rem auto; padding: 1rem 1.5rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-md); text-align: center; color: var(--accent-red);"></div>
+                </div>
+
+                <!-- ── Resultado ── -->
+                <div class="result-card" id="resultCard">
+                    <div id="resultIcon" style="font-size: 4rem; margin-bottom: 0.75rem;"></div>
+                    <div class="result-label" id="resultLabel"></div>
+                    <div class="result-probability" id="resultProb"></div>
+                    <div class="prob-bar-container">
+                        <div class="prob-bar" id="probBar" style="width: 0%;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin: 0.5rem 0 1rem;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">No Pobre</span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Pobre</span>
+                    </div>
+                    <div class="result-confidence" id="resultConf"></div>
+
+                    <!-- Feature summary -->
+                    <div id="featureSummary" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-subtle); text-align: left;"></div>
+                </div>
+
+                <!-- ── Ejemplos Rápidos ── -->
+                <div class="report-block" style="margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1rem; color: var(--accent-blue-light);">🧪 Perfiles de Ejemplo</h3>
+                    <p style="margin-bottom: 1.5rem;">Prueba con estos perfiles predefinidos para ver cómo responde el modelo:</p>
+
+                    <div class="features-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+                        <div class="card" style="cursor: pointer;" onclick="cargarEjemplo('pobre')">
+                            <h4 style="color: var(--accent-red); margin-bottom: 0.5rem;">⚠️ Hogar Vulnerable</h4>
+                            <p style="font-size: 0.85rem;">6 personas, 1 dormitorio, 4 años educación, 3 bienes, sin AFP, adobe, rural</p>
+                        </div>
+                        <div class="card" style="cursor: pointer;" onclick="cargarEjemplo('clase_media')">
+                            <h4 style="color: var(--accent-amber); margin-bottom: 0.5rem;">🏠 Clase Media</h4>
+                            <p style="font-size: 0.85rem;">4 personas, 2 dormitorios, 12 años educación, 8 bienes, sin AFP, ladrillo, urbana</p>
+                        </div>
+                        <div class="card" style="cursor: pointer;" onclick="cargarEjemplo('no_pobre')">
+                            <h4 style="color: var(--accent-green); margin-bottom: 0.5rem;">✅ Hogar Estable</h4>
+                            <p style="font-size: 0.85rem;">3 personas, 3 dormitorios, 17 años educación, 14 bienes, con AFP, ladrillo, urbana</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>
+                    <strong>Universidad Mayor de San Andrés</strong> · Facultad de Ciencias Puras y Naturales<br>
+                    Aprendizaje Automático — Enrique Rafael Fernandez Chiri · 2026
+                </p>
+                <div class="footer-links">
+                    <a href="/">Inicio</a>
+                    <a href="/informe">Informe</a>
+                    <a href="/graficos">Gráficos</a>
+                    <a href="/predictor">Predictor</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+    <script>
+        // ── Predictor Logic ──
+        const form = document.getElementById('predictorForm');
+        const spinner = document.getElementById('spinner');
+        const resultCard = document.getElementById('resultCard');
+        const errorMsg = document.getElementById('errorMsg');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await realizarPrediccion();
+        });
+
+        async function realizarPrediccion() {
+            // Reset
+            resultCard.classList.remove('show', 'pobre', 'no-pobre');
+            errorMsg.style.display = 'none';
+            spinner.classList.add('active');
+
+            const totalPersonas = parseInt(document.getElementById('totalPersonas').value);
+            const dormitorios = parseInt(document.getElementById('dormitorios').value);
+            const aniosEduc = parseInt(document.getElementById('aniosEduc').value);
+            const equipamiento = parseInt(document.getElementById('equipamiento').value);
+            const afp = parseInt(document.getElementById('afp').value);
+            const material = document.getElementById('material').value;
+            const area = parseInt(document.getElementById('area').value);
+
+            // Calculate hacinamiento
+            const hacinamiento = Math.round((totalPersonas / dormitorios) * 100) / 100;
+
+            // Calculate indice_equipamiento
+            const indiceEquipamiento = Math.round((equipamiento / 17) * 1000) / 1000;
+
+            // Material one-hot
+            const materiales = {
+                cana: material === 'cana' ? 1 : 0,
+                ladrillo: material === 'ladrillo' ? 1 : 0,
+                madera: material === 'madera' ? 1 : 0,
+                otro: material === 'otro' ? 1 : 0,
+                piedra: material === 'piedra' ? 1 : 0,
+                tabique: material === 'tabique' ? 1 : 0,
+            };
+
+            const payload = {
+                hacinamiento: hacinamiento,
+                anios_educ_jefe: aniosEduc,
+                indice_equipamiento: indiceEquipamiento,
+                afiliacion_afp: afp,
+                material_vivienda_cana_palma_tronco: materiales.cana,
+                material_vivienda_ladrillo_bloque_cemento_hormigon: materiales.ladrillo,
+                material_vivienda_madera: materiales.madera,
+                material_vivienda_otro: materiales.otro,
+                material_vivienda_piedra: materiales.piedra,
+                material_vivienda_tabique_quinche: materiales.tabique,
+                area_urbana: area,
+            };
+
+            try {
+                const response = await fetch('/api/predecir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || 'Error del servidor');
+                }
+
+                const data = await response.json();
+                spinner.classList.remove('active');
+                mostrarResultado(data, payload);
+
+            } catch (err) {
+                spinner.classList.remove('active');
+                errorMsg.textContent = '❌ ' + err.message;
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        function mostrarResultado(data, payload) {
+            const esPobre = data.prediccion === 'Pobre';
+            const probPobreza = data.probabilidad_pobreza;
+
+            // Set class
+            resultCard.className = 'result-card show ' + (esPobre ? 'pobre' : 'no-pobre');
+
+            // Icon
+            document.getElementById('resultIcon').textContent = esPobre ? '⚠️' : '✅';
+
+            // Label
+            const labelEl = document.getElementById('resultLabel');
+            labelEl.textContent = data.prediccion;
+            labelEl.style.color = esPobre ? 'var(--accent-red)' : 'var(--accent-green)';
+
+            // Probability
+            document.getElementById('resultProb').textContent = (probPobreza * 100).toFixed(1) + '%';
+            document.getElementById('resultProb').style.color = esPobre ? 'var(--accent-red)' : 'var(--accent-green)';
+
+            // Bar
+            const bar = document.getElementById('probBar');
+            bar.style.width = (probPobreza * 100) + '%';
+            bar.style.background = esPobre
+                ? 'linear-gradient(90deg, var(--accent-amber), var(--accent-red))'
+                : 'linear-gradient(90deg, var(--accent-green), var(--accent-cyan))';
+
+            // Confidence
+            const confColors = { 'Alta': 'var(--accent-green)', 'Media': 'var(--accent-amber)', 'Baja': 'var(--accent-red)' };
+            document.getElementById('resultConf').innerHTML =
+                `Confianza: <strong style="color: ${confColors[data.confianza]}">${data.confianza}</strong> · ` +
+                `P(Pobre) = ${data.probabilidad_pobreza} · P(No Pobre) = ${data.probabilidad_no_pobreza}`;
+
+            // Feature summary
+            const materialNames = {
+                adobe: 'Adobe/Tapial', ladrillo: 'Ladrillo/Hormigón', madera: 'Madera',
+                cana: 'Caña/Palma/Tronco', piedra: 'Piedra', tabique: 'Tabique/Quinche', otro: 'Otro'
+            };
+
+            const materialKey = document.getElementById('material').value;
+            document.getElementById('featureSummary').innerHTML = `
+                <h4 style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-muted);">📊 Features enviadas al modelo:</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; font-size: 0.85rem;">
+                    <div><strong>Hacinamiento:</strong> ${payload.hacinamiento}</div>
+                    <div><strong>Educación jefe:</strong> ${payload.anios_educ_jefe} años</div>
+                    <div><strong>Equipamiento:</strong> ${payload.indice_equipamiento.toFixed(3)}</div>
+                    <div><strong>AFP:</strong> ${payload.afiliacion_afp === 1 ? 'Sí' : 'No'}</div>
+                    <div><strong>Material:</strong> ${materialNames[materialKey]}</div>
+                    <div><strong>Área:</strong> ${payload.area_urbana === 1 ? 'Urbana' : 'Rural'}</div>
+                </div>
+            `;
+
+            // Scroll to result
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // ── Example profiles ──
+        function cargarEjemplo(tipo) {
+            const perfiles = {
+                pobre: { personas: 6, dormitorios: 1, educ: 4, equip: 3, afp: '0', material: 'adobe', area: '0' },
+                clase_media: { personas: 4, dormitorios: 2, educ: 12, equip: 8, afp: '0', material: 'ladrillo', area: '1' },
+                no_pobre: { personas: 3, dormitorios: 3, educ: 17, equip: 14, afp: '1', material: 'ladrillo', area: '1' },
+            };
+
+            const p = perfiles[tipo];
+            document.getElementById('totalPersonas').value = p.personas;
+            document.getElementById('dormitorios').value = p.dormitorios;
+            document.getElementById('aniosEduc').value = p.educ;
+            document.getElementById('equipamiento').value = p.equip;
+            document.getElementById('afp').value = p.afp;
+            document.getElementById('material').value = p.material;
+            document.getElementById('area').value = p.area;
+
+            // Auto-predict
+            realizarPrediccion();
+        }
+    </script>
+</body>
+</html>

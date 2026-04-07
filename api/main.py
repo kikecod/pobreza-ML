@@ -26,13 +26,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
-# Ruta al modelo serializado
+# Rutas del proyecto
 # ---------------------------------------------------------------------------
-MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_DIR = os.path.join(PROJECT_DIR, "output")
 MODEL_PATH = os.path.join(MODEL_DIR, "modelo_xgb.pkl")
+FRONTEND_DIR = os.path.join(PROJECT_DIR, "frontend")
+DOCS_DIR = os.path.join(PROJECT_DIR, "docs")
 
 # Variable global para el modelo cargado
 modelo = None
@@ -100,6 +105,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------------------------------------------------------------------
+# Servir archivos estaticos (graficos y frontend)
+# ---------------------------------------------------------------------------
+app.mount("/output", StaticFiles(directory=MODEL_DIR), name="output")
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 # ===========================================================================
@@ -241,10 +252,10 @@ class ResultadoPrediccion(BaseModel):
 
 
 # ===========================================================================
-# ENDPOINTS
+# API ENDPOINTS
 # ===========================================================================
 
-@app.get("/", tags=["General"])
+@app.get("/api", tags=["General"])
 async def raiz():
     """Health check e informacion general de la API."""
     return {
@@ -254,15 +265,15 @@ async def raiz():
         "dataset": "Encuesta de Hogares 2023 (BOL-INE-EH-2023)",
         "estado": "activo" if modelo is not None else "sin modelo",
         "endpoints": {
-            "GET /": "Informacion de la API",
-            "GET /salud": "Estado del modelo",
-            "POST /predecir": "Prediccion de pobreza para un hogar",
+            "GET /api": "Informacion de la API",
+            "GET /api/salud": "Estado del modelo",
+            "POST /api/predecir": "Prediccion de pobreza para un hogar",
             "GET /docs": "Documentacion interactiva (Swagger UI)",
         },
     }
 
 
-@app.get("/salud", tags=["General"])
+@app.get("/api/salud", tags=["General"])
 async def salud():
     """Verifica que el modelo esta cargado y operativo."""
     if modelo is None:
@@ -278,7 +289,7 @@ async def salud():
     }
 
 
-@app.post("/predecir", response_model=ResultadoPrediccion, tags=["Prediccion"])
+@app.post("/api/predecir", response_model=ResultadoPrediccion, tags=["Prediccion"])
 async def predecir(datos: DatosHogar):
     """
     Recibe los datos estructurales de un hogar boliviano y retorna
@@ -345,6 +356,34 @@ async def predecir(datos: DatosHogar):
 
 
 # ===========================================================================
+# FRONTEND ROUTES - Serve HTML pages
+# ===========================================================================
+
+@app.get("/", tags=["Frontend"])
+async def serve_home():
+    """Sirve la pagina principal del frontend."""
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
+
+@app.get("/informe", tags=["Frontend"])
+async def serve_informe():
+    """Sirve la pagina del informe."""
+    return FileResponse(os.path.join(FRONTEND_DIR, "informe.html"))
+
+
+@app.get("/graficos", tags=["Frontend"])
+async def serve_graficos():
+    """Sirve la pagina de graficos."""
+    return FileResponse(os.path.join(FRONTEND_DIR, "graficos.html"))
+
+
+@app.get("/predictor", tags=["Frontend"])
+async def serve_predictor():
+    """Sirve la pagina del predictor."""
+    return FileResponse(os.path.join(FRONTEND_DIR, "predictor.html"))
+
+
+# ===========================================================================
 # EJECUCION CON UVICORN
 # ===========================================================================
 if __name__ == "__main__":
@@ -353,7 +392,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print("  API PREDICCION DE POBREZA - BOLIVIA EH-2023")
     print("  Iniciando servidor Uvicorn en http://127.0.0.1:8000")
-    print("  Documentacion: http://127.0.0.1:8000/docs")
+    print("  Frontend:       http://127.0.0.1:8000")
+    print("  Documentacion:  http://127.0.0.1:8000/docs")
     print("=" * 60)
 
     uvicorn.run(

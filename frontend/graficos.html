@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gráficos y Análisis — Predicción de Pobreza Bolivia</title>
+    <meta name="description" content="Gráficos de evaluación, explicabilidad SHAP y análisis exploratorio del modelo de predicción de pobreza multidimensional.">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+    <!-- ── Navbar ── -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-content">
+            <a href="/" class="nav-logo">
+                <span class="logo-icon">🇧🇴</span>
+                Pobreza ML
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/">Inicio</a></li>
+                <li><a href="/informe">Informe</a></li>
+                <li><a href="/graficos" class="active">Gráficos</a></li>
+                <li><a href="/predictor">Predictor</a></li>
+                <li><a href="/docs" target="_blank">API Docs</a></li>
+            </ul>
+            <div class="nav-toggle" id="navToggle">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── Page Header ── -->
+    <div class="page-header">
+        <div class="container">
+            <span class="section-label">Visualización</span>
+            <h1>Gráficos y Análisis</h1>
+            <p>12 visualizaciones que cubren análisis exploratorio, evaluación del modelo y explicabilidad SHAP. Haz clic en cualquier imagen para ampliarla.</p>
+        </div>
+    </div>
+
+    <!-- ── Image Modal ── -->
+    <div class="modal-overlay" id="imageModal">
+        <img id="modalImage" src="" alt="Gráfico ampliado">
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SECCIÓN 1: ANÁLISIS EXPLORATORIO
+         ══════════════════════════════════════════════════════════════ -->
+    <section class="section" style="padding-top: 1rem;">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Fase A</span>
+                <h2>Análisis Exploratorio de Datos</h2>
+                <p>Visualizaciones generadas antes del modelado para comprender la estructura y distribución de los datos.</p>
+            </div>
+
+            <!-- 1. Distribución del Target -->
+            <div class="graph-section">
+                <div class="graph-card reveal">
+                    <img src="/output/distribucion_target.png" alt="Distribución de la Variable Objetivo" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">Exploratorio</span> Distribución de la Variable Objetivo</h3>
+                        <p>Este gráfico muestra el desbalanceo de clases en el dataset original. De los <strong>12,815 hogares</strong> analizados, el <strong>69% (8,845)</strong> son clasificados como <strong>No Pobres</strong> y el <strong>31% (3,970)</strong> como <strong>Pobres</strong>. Esta proporción de aproximadamente 2:1 justifica la aplicación de <strong>SMOTE</strong> (Synthetic Minority Over-sampling Technique) en la fase de preprocesamiento para evitar que el modelo priorice la clase mayoritaria y perjudique el Recall de los hogares pobres.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2-3 side by side -->
+            <div class="graph-grid-2">
+                <!-- 2. Correlación -->
+                <div class="graph-card reveal">
+                    <img src="/output/correlacion_features.png" alt="Matriz de Correlación" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">Exploratorio</span> Matriz de Correlación de Pearson</h3>
+                        <p>Heatmap de la correlación lineal entre las 11 features. Las correlaciones más relevantes son: <strong>area_urbana ↔ ladrillo_hormigon (0.52)</strong> y <strong>indice_equipamiento ↔ anios_educ_jefe (0.48)</strong>. No se observa multicolinealidad severa (|r| > 0.8), validando que las features aportan información complementaria al modelo.</p>
+                    </div>
+                </div>
+
+                <!-- 3. Boxplots -->
+                <div class="graph-card reveal">
+                    <img src="/output/boxplot_por_clase.png" alt="Boxplots por Clase" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">Exploratorio</span> Distribución de Features por Clase</h3>
+                        <p>Los boxplots revelan diferencias significativas entre hogares Pobres y No Pobres: el <strong>hacinamiento</strong> es mayor en hogares pobres (mediana ~2 vs ~1.5), los <strong>años de educación del jefe</strong> son menores (mediana ~9 vs ~12), y el <strong>índice de equipamiento</strong> es inferior (mediana ~0.3 vs ~0.35). Estas diferencias validan la capacidad discriminativa de las features.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SECCIÓN 2: EVALUACIÓN DEL MODELO
+         ══════════════════════════════════════════════════════════════ -->
+    <section class="section" style="background: var(--bg-secondary); border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Fase B</span>
+                <h2>Evaluación del Modelo</h2>
+                <p>Métricas y gráficos que miden el rendimiento del clasificador XGBoost en el conjunto de prueba.</p>
+            </div>
+
+            <!-- 4. Curva ROC -->
+            <div class="graph-section">
+                <div class="graph-card reveal">
+                    <img src="/output/curva_roc.png" alt="Curva ROC" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">Evaluación</span> Curva ROC (Receiver Operating Characteristic)</h3>
+                        <p>La Curva ROC grafica la Tasa de Verdaderos Positivos (Recall) contra la Tasa de Falsos Positivos en todos los umbrales de decisión. El modelo XGBoost logra un <strong>AUC = 0.7598</strong> en el conjunto de prueba, superando significativamente la línea de azar (AUC = 0.5). El área sombreada en azul representa la ganancia sobre la clasificación aleatoria. Un AUC de 0.76 indica que, dado un hogar pobre y uno no pobre seleccionados al azar, el modelo asignará correctamente una mayor probabilidad de pobreza al hogar efectivamente pobre en el 76% de los casos.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5-6 side by side -->
+            <div class="graph-grid-2">
+                <!-- 5. Matriz de Confusión -->
+                <div class="graph-card reveal">
+                    <img src="/output/matriz_confusion.png" alt="Matriz de Confusión" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">Evaluación</span> Matriz de Confusión</h3>
+                        <p>De los <strong>2,563 hogares</strong> del test: <strong>1,485 (57.9%)</strong> son Verdaderos Negativos (No Pobres correctamente clasificados), <strong>378 (14.7%)</strong> son Verdaderos Positivos (Pobres detectados), <strong>284 (11.1%)</strong> son Falsos Positivos, y <strong>416 (16.2%)</strong> son Falsos Negativos (hogares pobres no detectados). El costo social de los FN es crítico, ya que representan hogares que serían excluidos de programas sociales.</p>
+                    </div>
+                </div>
+
+                <!-- 6. Comparación CV vs Test -->
+                <div class="graph-card reveal">
+                    <img src="/output/comparacion_cv_test.png" alt="Comparación CV vs Test" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">Evaluación</span> Comparación CV vs Test</h3>
+                        <p>El AUC en validación cruzada (<strong>0.8182</strong>) es superior al AUC en test (<strong>0.7598</strong>), una diferencia de ~0.058 que indica un <strong>leve sobreajuste</strong> del modelo a los datos de entrenamiento. Sin embargo, esta brecha es aceptable y común en datasets de encuestas con variabilidad intrínseca. El modelo generaliza razonablemente bien.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7-8 side by side -->
+            <div class="graph-grid-2">
+                <!-- 7. Curva Precision-Recall -->
+                <div class="graph-card reveal">
+                    <img src="/output/curva_precision_recall.png" alt="Curva Precision-Recall" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">Evaluación</span> Curva Precision-Recall</h3>
+                        <p>En datasets desbalanceados, la curva PR es más informativa que la ROC. El <strong>Average Precision (AP) = 0.5939</strong> indica la capacidad del modelo para identificar hogares pobres sin generar excesivos falsos positivos. La línea base punteada (prevalencia = 0.31) muestra lo que lograría un clasificador aleatorio. El modelo supera ampliamente este baseline en todos los niveles de recall.</p>
+                    </div>
+                </div>
+
+                <!-- 8. Distribución de Probabilidades -->
+                <div class="graph-card reveal">
+                    <img src="/output/distribucion_probabilidades.png" alt="Distribución de Probabilidades" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">Evaluación</span> Distribución de Probabilidades Predichas</h3>
+                        <p>El histograma muestra las probabilidades predichas separadas por clase real. Los hogares <strong>No Pobres (verde)</strong> se concentran en probabilidades bajas (0-0.3), mientras que los <strong>Pobres (rojo)</strong> se distribuyen a la derecha. La línea vertical en <strong>umbral = 0.5</strong> define el punto de corte. Se observa solapamiento en la zona 0.3-0.5, donde el modelo tiene mayor incertidumbre.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 9. Importancia Features -->
+            <div class="graph-section">
+                <div class="graph-card reveal">
+                    <img src="/output/importancia_features.png" alt="Importancia de Features" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">Evaluación</span> Importancia de Features (XGBoost Gain)</h3>
+                        <p>Ranking de contribución de cada variable a las predicciones del modelo según el criterio de <strong>Gain</strong> (reducción promedio de la función de pérdida). La <strong>afiliación a AFP (34.1%)</strong> es la variable más influyente, seguida por el <strong>índice de equipamiento (17.7%)</strong>, los <strong>años de educación del jefe (12.6%)</strong> y el <strong>hacinamiento (11.1%)</strong>. Las variables de material de vivienda contribuyen de forma modesta. Este ranking confirma que la protección social (AFP) y el capital humano (educación) son los principales discriminadores de la pobreza en Bolivia.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SECCIÓN 3: EXPLICABILIDAD (SHAP)
+         ══════════════════════════════════════════════════════════════ -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Explainable AI</span>
+                <h2>Explicabilidad SHAP</h2>
+                <p>SHAP (SHapley Additive exPlanations) descompone cada predicción en contribuciones individuales de cada feature, basándose en la teoría de juegos cooperativos.</p>
+            </div>
+
+            <!-- 10. SHAP Beeswarm -->
+            <div class="graph-section">
+                <div class="graph-card reveal">
+                    <img src="/output/shap_beeswarm.png" alt="SHAP Beeswarm" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">SHAP</span> Beeswarm Plot — Impacto Global</h3>
+                        <p>La visualización más rica de SHAP. Cada punto es un hogar del test set. El eje X muestra el impacto en la predicción (positivo = aumenta riesgo de pobreza). El color indica el valor de la feature (rojo = alto, azul = bajo). Se observa que:</p>
+                        <ul style="color: var(--text-secondary); padding-left: 1.5rem; margin-top: 0.75rem;">
+                            <li><strong>Hacinamiento alto</strong> (puntos rojos a la derecha) → mayor riesgo de pobreza</li>
+                            <li><strong>Índice de equipamiento bajo</strong> (puntos azules a la derecha) → mayor riesgo</li>
+                            <li><strong>Años de educación bajos</strong> (azules a la derecha) → mayor riesgo</li>
+                            <li><strong>Sin afiliación AFP</strong> (azules a la derecha) → mayor riesgo</li>
+                            <li><strong>Área urbana</strong> reduce el riesgo de pobreza</li>
+                        </ul>
+                        <p style="margin-top: 1rem;">Esta validación causal confirma que el modelo emula el razonamiento socioeconómico: no es una "caja negra".</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 11-12 side by side -->
+            <div class="graph-grid-2">
+                <!-- 11. SHAP Bar -->
+                <div class="graph-card reveal">
+                    <img src="/output/shap_importancia_barras.png" alt="SHAP Importancia" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">SHAP</span> Importancia Global (Media |SHAP|)</h3>
+                        <p>A diferencia del Gain de XGBoost, la importancia SHAP mide el impacto promedio real de cada feature en las predicciones. Aquí, el <strong>hacinamiento</strong> es la feature más influyente, seguida por el <strong>índice de equipamiento</strong> y los <strong>años de educación del jefe</strong>. La diferencia con el ranking de Gain (donde AFP dominaba) revela que AFP tiene alta ganancia informativa pero SHAP muestra que su impacto marginal es comparable al de otras variables.</p>
+                    </div>
+                </div>
+
+                <!-- 12. SHAP Waterfall -->
+                <div class="graph-card reveal">
+                    <img src="/output/shap_waterfall.png" alt="SHAP Waterfall" class="graph-image" loading="lazy">
+                    <div class="graph-info">
+                        <h3><span class="graph-tag">SHAP</span> Waterfall — Predicción Individual</h3>
+                        <p>Explicación de una predicción individual (hogar #0 del test). El valor base E[f(X)] = -0.223 se empuja hacia arriba o abajo por cada feature. En este hogar: el <strong>bajo índice de equipamiento (0.118)</strong> empuja fuertemente hacia pobreza (+0.49), pero <strong>vivir en zona urbana</strong> (-0.25) y la <strong>vivienda de material sólido</strong> (-0.13) contrarrestan, resultando en una predicción final f(x) = 0.114 (No Pobre, con margen).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>
+                    <strong>Universidad Mayor de San Andrés</strong> · Facultad de Ciencias Puras y Naturales<br>
+                    Aprendizaje Automático — Enrique Rafael Fernandez Chiri · 2026
+                </p>
+                <div class="footer-links">
+                    <a href="/">Inicio</a>
+                    <a href="/informe">Informe</a>
+                    <a href="/graficos">Gráficos</a>
+                    <a href="/predictor">Predictor</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
