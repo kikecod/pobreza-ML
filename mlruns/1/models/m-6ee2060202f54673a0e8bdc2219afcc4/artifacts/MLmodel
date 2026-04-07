@@ -1,0 +1,22 @@
+artifact_path: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/mlruns/1/models/m-6ee2060202f54673a0e8bdc2219afcc4/artifacts
+flavors:
+  python_function:
+    data: model.ubj
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.11.1
+  xgboost:
+    code: null
+    data: model.ubj
+    model_class: xgboost.sklearn.XGBClassifier
+    model_format: ubj
+    xgb_version: 3.2.0
+mlflow_version: 3.10.1
+model_id: m-6ee2060202f54673a0e8bdc2219afcc4
+model_size_bytes: 801775
+model_uuid: m-6ee2060202f54673a0e8bdc2219afcc4
+prompts: null
+run_id: 67c9ca8b35ce4789b92eff529b5d0870
+utc_time_created: '2026-04-07 19:26:05.440476'

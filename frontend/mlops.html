@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLOps y Versiones — Prediccion de Pobreza Bolivia</title>
+    <meta name="description" content="Panel web de versionado del modelo, metricas AUC y runs de MLflow para el proyecto de prediccion de pobreza.">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="nav-content">
+            <a href="/" class="nav-logo">
+                <span class="logo-icon">🇧🇴</span>
+                Pobreza ML
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/">Inicio</a></li>
+                <li><a href="/informe">Informe</a></li>
+                <li><a href="/graficos">Graficos</a></li>
+                <li><a href="/predictor">Predictor</a></li>
+                <li><a href="/mlops" class="active">MLOps</a></li>
+                <li><a href="/docs" target="_blank">API Docs</a></li>
+            </ul>
+            <div class="nav-toggle" id="navToggle">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-header">
+        <div class="container">
+            <span class="section-label">MLOps</span>
+            <h1>Versionado del Modelo</h1>
+            <p>Vista operativa de la version activa, metricas AUC y ejecuciones recientes de entrenamiento (MLflow local).</p>
+        </div>
+    </div>
+
+    <section class="section" style="padding-top: 1rem;">
+        <div class="container">
+            <div class="stats-grid" style="margin-top: 0;" id="topStats">
+                <div class="stat-card reveal">
+                    <div class="stat-label">Version Corta</div>
+                    <div class="stat-value" style="font-size: 1.3rem; -webkit-text-fill-color: var(--text-primary);" id="versionCorta">--</div>
+                </div>
+                <div class="stat-card reveal">
+                    <div class="stat-label">AUC Test</div>
+                    <div class="stat-value" id="aucTest">--</div>
+                </div>
+                <div class="stat-card reveal">
+                    <div class="stat-label">AUC CV</div>
+                    <div class="stat-value" id="aucCv">--</div>
+                </div>
+                <div class="stat-card reveal">
+                    <div class="stat-label">Runs Detectados</div>
+                    <div class="stat-value" id="runsCount">0</div>
+                </div>
+            </div>
+
+            <div class="features-grid" style="margin-top: 2rem;">
+                <div class="card reveal">
+                    <h3>Modelo Activo</h3>
+                    <p style="margin-bottom: 1rem;">Trazabilidad del artefacto cargado por la API.</p>
+                    <div id="modeloActivo" style="font-size: 0.9rem; color: var(--text-secondary);"></div>
+                </div>
+
+                <div class="card reveal">
+                    <h3>Estado MLflow</h3>
+                    <p style="margin-bottom: 1rem;">Tracking local basado en la carpeta mlruns.</p>
+                    <div id="mlflowEstado" style="font-size: 0.9rem; color: var(--text-secondary);"></div>
+                </div>
+            </div>
+
+            <div class="report-block reveal" style="margin-top: 2rem;">
+                <h2 style="border: none; padding: 0; margin-bottom: 1rem;">Entrenamiento desde Web</h2>
+                <p>Ejecuta el pipeline completo con un clic. Si ya existe modelo, funciona como reentrenamiento.</p>
+                <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
+                    <button id="btnTrain" class="btn btn-primary">Entrenar / Reentrenar</button>
+                    <button id="btnRefreshTrain" class="btn btn-secondary">Actualizar Estado</button>
+                </div>
+                <div id="trainStatus" style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);"></div>
+                <div style="margin-top: 1rem;">
+                    <h4 style="margin-bottom: 0.5rem;">Ultimas lineas del entrenamiento</h4>
+                    <pre id="trainLog" style="max-height: 260px; overflow: auto; background: rgba(17,24,39,0.9); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.8rem; font-size: 0.8rem; color: #d1d5db;">Sin logs aun.</pre>
+                </div>
+            </div>
+
+            <div class="report-block reveal" style="margin-top: 2rem;">
+                <h2 style="border: none; padding: 0; margin-bottom: 1rem;">Runs Recientes</h2>
+                <p>Las ejecuciones se llenan automaticamente cuando entrenas y registras con MLflow.</p>
+                <div class="table-wrapper" style="margin-top: 1rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Run ID</th>
+                                <th>Nombre</th>
+                                <th>Estado</th>
+                                <th>AUC Test</th>
+                                <th>AUC CV</th>
+                                <th>Inicio (UTC)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="runsTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align:center;">Cargando estado MLOps...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="errorMsg" style="display:none; margin-top: 1rem; padding: 0.9rem 1rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-md); color: var(--accent-red);"></div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>
+                    <strong>Universidad Mayor de San Andres</strong> · Facultad de Ciencias Puras y Naturales<br>
+                    Aprendizaje Automatico — Enrique Rafael Fernandez Chiri · 2026
+                </p>
+                <div class="footer-links">
+                    <a href="/">Inicio</a>
+                    <a href="/predictor">Predictor</a>
+                    <a href="/mlops">MLOps</a>
+                    <a href="/docs" target="_blank">API</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+    <script>
+        let pollTimer = null;
+
+        function startPollingTrainStatus() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+            }
+            pollTimer = setInterval(cargarEstadoEntrenamiento, 3000);
+        }
+
+        async function iniciarEntrenamiento() {
+            const btn = document.getElementById('btnTrain');
+            btn.disabled = true;
+            btn.textContent = 'Iniciando...';
+
+            try {
+                const resp = await fetch('/api/mlops/train', { method: 'POST' });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    throw new Error(data.detail || 'No se pudo iniciar entrenamiento');
+                }
+                await cargarEstadoEntrenamiento();
+                startPollingTrainStatus();
+            } catch (error) {
+                const errorBox = document.getElementById('errorMsg');
+                errorBox.style.display = 'block';
+                errorBox.textContent = `Error al iniciar entrenamiento: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Entrenar / Reentrenar';
+            }
+        }
+
+        async function cargarEstadoEntrenamiento() {
+            const statusEl = document.getElementById('trainStatus');
+            const logEl = document.getElementById('trainLog');
+            const btn = document.getElementById('btnTrain');
+
+            try {
+                const resp = await fetch('/api/mlops/train/status');
+                if (!resp.ok) {
+                    throw new Error('No se pudo consultar estado de entrenamiento');
+                }
+                const s = await resp.json();
+
+                statusEl.innerHTML = [
+                    `<div><strong>Running:</strong> ${s.running ? 'Si' : 'No'}</div>`,
+                    `<div><strong>PID:</strong> ${s.pid ?? '--'}</div>`,
+                    `<div><strong>Inicio:</strong> ${s.started_at || '--'}</div>`,
+                    `<div><strong>Fin:</strong> ${s.finished_at || '--'}</div>`,
+                    `<div><strong>Exit code:</strong> ${s.exit_code ?? '--'}</div>`
+                ].join('');
+
+                const logLines = Array.isArray(s.log_tail) ? s.log_tail : [];
+                logEl.textContent = logLines.length ? logLines.join('\n') : 'Sin logs aun.';
+                logEl.scrollTop = logEl.scrollHeight;
+
+                btn.disabled = !!s.running;
+                if (!s.running && pollTimer) {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    await cargarEstadoMlops();
+                }
+            } catch (error) {
+                statusEl.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function cargarEstadoMlops() {
+            const errorBox = document.getElementById('errorMsg');
+            const runsBody = document.getElementById('runsTableBody');
+            errorBox.style.display = 'none';
+
+            try {
+                const resp = await fetch('/api/mlops/status');
+                if (!resp.ok) {
+                    throw new Error('No se pudo obtener /api/mlops/status');
+                }
+
+                const data = await resp.json();
+                const modelo = data.modelo_activo || {};
+                const mlflow = data.mlflow_tracking || {};
+                const metricas = data.metricas || {};
+                const runs = mlflow.runs || [];
+
+                document.getElementById('versionCorta').textContent = modelo.version_corta || 'sin_hash';
+                document.getElementById('aucTest').textContent = metricas.auc_test != null ? Number(metricas.auc_test).toFixed(4) : '--';
+                document.getElementById('aucCv').textContent = metricas.auc_cv != null ? Number(metricas.auc_cv).toFixed(4) : '--';
+                document.getElementById('runsCount').textContent = String(mlflow.runs_detectados || 0);
+
+                document.getElementById('modeloActivo').innerHTML = [
+                    `<div><strong>Path:</strong> ${modelo.path || '--'}</div>`,
+                    `<div><strong>Existe:</strong> ${modelo.existe ? 'Si' : 'No'}</div>`,
+                    `<div><strong>Tamano:</strong> ${modelo.tamano_bytes ?? '--'} bytes</div>`,
+                    `<div><strong>Actualizado:</strong> ${modelo.actualizado_utc || '--'}</div>`,
+                    `<div><strong>SHA256:</strong> <span style="word-break: break-all;">${modelo.sha256 || '--'}</span></div>`
+                ].join('');
+
+                document.getElementById('mlflowEstado').innerHTML = [
+                    `<div><strong>Tracking URI:</strong> ${mlflow.tracking_uri || '--'}</div>`,
+                    `<div><strong>Habilitado:</strong> ${mlflow.enabled ? 'Si' : 'No (aun no existe mlruns/)'}</div>`,
+                    `<div><strong>Runs:</strong> ${mlflow.runs_detectados || 0}</div>`,
+                    `<div><strong>AUC threshold:</strong> ${metricas.threshold_auc ?? 0.84}</div>`
+                ].join('');
+
+                if (!runs.length) {
+                    runsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Sin runs detectados todavia. Ejecuta entrenamiento con MLflow para ver versiones.</td></tr>';
+                    return;
+                }
+
+                runsBody.innerHTML = runs.map((r) => {
+                    const runId = (r.run_id || '--').toString();
+                    return `
+                        <tr>
+                            <td>${runId.slice(0, 12)}</td>
+                            <td>${r.run_name || '--'}</td>
+                            <td>${r.status || '--'}</td>
+                            <td>${r.auc_test != null ? Number(r.auc_test).toFixed(4) : '--'}</td>
+                            <td>${r.auc_cv != null ? Number(r.auc_cv).toFixed(4) : '--'}</td>
+                            <td>${r.start_time || '--'}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                runsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No fue posible cargar runs.</td></tr>';
+                errorBox.style.display = 'block';
+                errorBox.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('btnTrain').addEventListener('click', iniciarEntrenamiento);
+            document.getElementById('btnRefreshTrain').addEventListener('click', cargarEstadoEntrenamiento);
+            await cargarEstadoMlops();
+            await cargarEstadoEntrenamiento();
+            startPollingTrainStatus();
+        });
+    </script>
+</body>
+</html>

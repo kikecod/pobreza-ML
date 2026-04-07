@@ -19,9 +19,13 @@ Uso:
 
 import os
 import sys
+import json
+import hashlib
+import subprocess
 import joblib
 import numpy as np
 import pandas as pd
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -38,9 +42,16 @@ MODEL_DIR = os.path.join(PROJECT_DIR, "output")
 MODEL_PATH = os.path.join(MODEL_DIR, "modelo_xgb.pkl")
 FRONTEND_DIR = os.path.join(PROJECT_DIR, "frontend")
 DOCS_DIR = os.path.join(PROJECT_DIR, "docs")
+MLRUNS_DIR = os.path.join(PROJECT_DIR, "mlruns")
+METRICS_PATH = os.path.join(MODEL_DIR, "metrics.json")
+TRAINING_LOG_PATH = os.path.join(MODEL_DIR, "training.log")
 
 # Variable global para el modelo cargado
 modelo = None
+training_process: subprocess.Popen | None = None
+training_started_at: str | None = None
+training_finished_at: str | None = None
+training_exit_code: int | None = None
 
 # ---------------------------------------------------------------------------
 # Nombres de las features (en el MISMO orden que el entrenamiento)
@@ -58,6 +69,180 @@ FEATURE_NAMES = [
     "material_vivienda_tabique_quinche",
     "area_urbana",
 ]
+
+
+def _safe_read_json(path: str) -> dict:
+    """Lee un JSON de forma segura; retorna diccionario vacio si falla."""
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _iso_from_timestamp(timestamp: float | None) -> str | None:
+    """Convierte timestamp unix a fecha ISO UTC."""
+    if timestamp is None:
+        return None
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
+
+
+def _model_sha256(path: str) -> str | None:
+    """Calcula SHA256 del artefacto del modelo para trazar versiones."""
+    if not os.path.exists(path):
+        return None
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _parse_meta_yaml(path: str) -> dict:
+    """Parser simple para meta.yaml de MLflow sin dependencias extra."""
+    data = {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or ":" not in line:
+                    continue
+                key, value = line.split(":", 1)
+                data[key.strip()] = value.strip().strip("\"").strip("'")
+    except Exception:
+        return {}
+    return data
+
+
+def _read_run_metric(metric_file: str) -> float | None:
+    """Lee el valor mas reciente de una metrica de MLflow."""
+    try:
+        with open(metric_file, "r", encoding="utf-8") as f:
+            lines = [ln.strip() for ln in f if ln.strip()]
+        if not lines:
+            return None
+        # Formato habitual: <timestamp> <value> <step>
+        parts = lines[-1].split()
+        if len(parts) >= 2:
+            return float(parts[1])
+    except Exception:
+        return None
+    return None
+
+
+def _collect_mlruns(limit: int = 5) -> list[dict]:
+    """Recolecta runs recientes del tracking local de MLflow (si existe)."""
+    if not os.path.isdir(MLRUNS_DIR):
+        return []
+
+    runs: list[dict] = []
+    for exp_id in os.listdir(MLRUNS_DIR):
+        exp_dir = os.path.join(MLRUNS_DIR, exp_id)
+        if not os.path.isdir(exp_dir):
+            continue
+        for run_id in os.listdir(exp_dir):
+            run_dir = os.path.join(exp_dir, run_id)
+            meta_path = os.path.join(run_dir, "meta.yaml")
+            if not os.path.exists(meta_path):
+                continue
+
+            meta = _parse_meta_yaml(meta_path)
+            metrics_dir = os.path.join(run_dir, "metrics")
+            auc_test = None
+            auc_cv = None
+            if os.path.isdir(metrics_dir):
+                auc_test = _read_run_metric(os.path.join(metrics_dir, "auc_test"))
+                auc_cv = _read_run_metric(os.path.join(metrics_dir, "auc_cv"))
+
+            start_ms_raw = meta.get("start_time")
+            start_ms = int(start_ms_raw) if start_ms_raw and start_ms_raw.isdigit() else None
+            start_ts = (start_ms / 1000) if start_ms is not None else None
+
+            runs.append({
+                "run_id": meta.get("run_id", run_id),
+                "run_name": meta.get("run_name", "sin_nombre"),
+                "experiment_id": meta.get("experiment_id", exp_id),
+                "status": meta.get("status", "UNKNOWN"),
+                "start_time": _iso_from_timestamp(start_ts),
+                "auc_test": round(auc_test, 4) if auc_test is not None else None,
+                "auc_cv": round(auc_cv, 4) if auc_cv is not None else None,
+            })
+
+    runs.sort(key=lambda r: r.get("start_time") or "", reverse=True)
+    return runs[:limit]
+
+
+def _build_mlops_status() -> dict:
+    """Construye estado MLOps para la vista web."""
+    metrics = _safe_read_json(METRICS_PATH)
+    model_exists = os.path.exists(MODEL_PATH)
+    model_stat = os.stat(MODEL_PATH) if model_exists else None
+    model_hash = _model_sha256(MODEL_PATH) if model_exists else None
+    runs = _collect_mlruns(limit=5)
+
+    return {
+        "api_version": app.version,
+        "mlflow_tracking": {
+            "tracking_uri": MLRUNS_DIR,
+            "enabled": os.path.isdir(MLRUNS_DIR),
+            "runs_detectados": len(runs),
+            "runs": runs,
+        },
+        "modelo_activo": {
+            "path": MODEL_PATH,
+            "existe": model_exists,
+            "tamano_bytes": model_stat.st_size if model_stat else None,
+            "actualizado_utc": _iso_from_timestamp(model_stat.st_mtime) if model_stat else None,
+            "sha256": model_hash,
+            "version_corta": model_hash[:12] if model_hash else None,
+        },
+        "metricas": {
+            "auc_test": metrics.get("auc_test"),
+            "auc_cv": metrics.get("auc_cv"),
+            "threshold_auc": metrics.get("threshold_auc", 0.84),
+        },
+    }
+
+
+def _tail_file(path: str, max_lines: int = 60) -> list[str]:
+    """Retorna ultimas lineas de un archivo de log sin fallar."""
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+        return [ln.rstrip("\n") for ln in lines[-max_lines:]]
+    except Exception:
+        return []
+
+
+def _training_status_payload() -> dict:
+    """Construye estado actual del proceso de entrenamiento en background."""
+    global training_process, training_exit_code, training_finished_at
+
+    running = False
+    pid = None
+    if training_process is not None:
+        pid = training_process.pid
+        poll_code = training_process.poll()
+        if poll_code is None:
+            running = True
+        else:
+            training_exit_code = poll_code
+            if training_finished_at is None:
+                training_finished_at = datetime.now(timezone.utc).isoformat()
+
+    return {
+        "running": running,
+        "pid": pid,
+        "started_at": training_started_at,
+        "finished_at": training_finished_at,
+        "exit_code": training_exit_code,
+        "log_path": TRAINING_LOG_PATH,
+        "log_tail": _tail_file(TRAINING_LOG_PATH, max_lines=60),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +453,11 @@ async def raiz():
             "GET /api": "Informacion de la API",
             "GET /api/salud": "Estado del modelo",
             "POST /api/predecir": "Prediccion de pobreza para un hogar",
+            "GET /api/mlops/status": "Estado de versionado y metricas MLOps",
+            "GET /api/mlops/runs": "Runs recientes de MLflow local",
+            "POST /api/mlops/train": "Inicia entrenamiento/reentrenamiento",
+            "GET /api/mlops/train/status": "Estado y logs de entrenamiento",
+            "GET /mlops": "Panel web de versionado MLOps",
             "GET /docs": "Documentacion interactiva (Swagger UI)",
         },
     }
@@ -287,6 +477,69 @@ async def salud():
         "features_esperadas": len(FEATURE_NAMES),
         "tipo_modelo": type(modelo).__name__,
     }
+
+
+@app.get("/api/mlops/status", tags=["MLOps"])
+async def mlops_status():
+    """Estado de versionado del modelo, metricas y runs locales de MLflow."""
+    return _build_mlops_status()
+
+
+@app.get("/api/mlops/runs", tags=["MLOps"])
+async def mlops_runs(limit: int = 10):
+    """Lista de runs detectados en tracking local MLflow (mlruns/)."""
+    safe_limit = max(1, min(limit, 50))
+    return {
+        "count": safe_limit,
+        "runs": _collect_mlruns(limit=safe_limit),
+    }
+
+
+@app.post("/api/mlops/train", tags=["MLOps"])
+async def mlops_train():
+    """Lanza entrenamiento/reentrenamiento en segundo plano."""
+    global training_process, training_started_at, training_finished_at, training_exit_code
+
+    # Evitar entrenamiento concurrente
+    if training_process is not None and training_process.poll() is None:
+        return {
+            "ok": False,
+            "message": "Ya existe un entrenamiento en ejecucion.",
+            **_training_status_payload(),
+        }
+
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    with open(TRAINING_LOG_PATH, "w", encoding="utf-8") as log_file:
+        log_file.write("[INFO] Iniciando entrenamiento desde API...\n")
+
+    cmd = [sys.executable, os.path.join(PROJECT_DIR, "main.py")]
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+
+    log_stream = open(TRAINING_LOG_PATH, "a", encoding="utf-8")
+    training_process = subprocess.Popen(
+        cmd,
+        cwd=PROJECT_DIR,
+        stdout=log_stream,
+        stderr=subprocess.STDOUT,
+        env=env,
+    )
+
+    training_started_at = datetime.now(timezone.utc).isoformat()
+    training_finished_at = None
+    training_exit_code = None
+
+    return {
+        "ok": True,
+        "message": "Entrenamiento/reentrenamiento iniciado.",
+        **_training_status_payload(),
+    }
+
+
+@app.get("/api/mlops/train/status", tags=["MLOps"])
+async def mlops_train_status():
+    """Estado de entrenamiento en background y cola de logs."""
+    return _training_status_payload()
 
 
 @app.post("/api/predecir", response_model=ResultadoPrediccion, tags=["Prediccion"])
@@ -381,6 +634,12 @@ async def serve_graficos():
 async def serve_predictor():
     """Sirve la pagina del predictor."""
     return FileResponse(os.path.join(FRONTEND_DIR, "predictor.html"))
+
+
+@app.get("/mlops", tags=["Frontend"])
+async def serve_mlops():
+    """Sirve la pagina web de versionado MLOps."""
+    return FileResponse(os.path.join(FRONTEND_DIR, "mlops.html"))
 
 
 # ===========================================================================

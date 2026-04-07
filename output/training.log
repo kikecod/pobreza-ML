@@ -1,0 +1,167 @@
+[INFO] Iniciando entrenamiento desde API...
+============================================================
+  PREDICCION DE POBREZA MULTIDIMENSIONAL - BOLIVIA 2023
+  Encuesta de Hogares (BOL-INE-EH-2023)
+============================================================
+
+============================================================
+  FASE A: INGENIERIA DE DATOS
+============================================================
+
+>> A.1 Cargando microdatos desde archivos .sav ...
+[OK] Vivienda     : 12,815 registros,  36 columnas
+[OK] Equipamiento : 217,855 registros,  11 columnas
+[OK] Persona      : 40,647 registros, 280 columnas
+
+>> A.1 Construyendo indice de equipamiento ...
+  Hogares con equipamiento: 12,815
+
+>> A.1 Extrayendo informacion del jefe de hogar ...
+  Jefes de hogar identificados: 12,815
+
+>> A.1 Fusionando datasets por llave 'folio' ...
+
+[OK] Dataset fusionado: 12,815 hogares,  57 columnas
+
+>> A.2 Construyendo features predictoras ...
+[OK] Features construidas: hacinamiento, material_vivienda, area
+
+>> A.3 Seleccionando variables y aplicando One-Hot Encoding ...
+
+[OK] Features finales (11):
+   1. hacinamiento
+   2. anios_educ_jefe
+   3. indice_equipamiento
+   4. afiliacion_afp
+   5. material_vivienda_cana_palma_tronco
+   6. material_vivienda_ladrillo_bloque_cemento_hormigon
+   7. material_vivienda_madera
+   8. material_vivienda_otro
+   9. material_vivienda_piedra
+  10. material_vivienda_tabique_quinche
+  11. area_urbana
+
+[OK] Variable objetivo: target_pobreza
+  Distribucion:
+target_pobreza
+0    8845
+1    3970
+  Tasa de pobreza: 30.98%
+
+>> A.3b Generando graficos exploratorios ...
+[OK] Distribucion del target guardada en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/distribucion_target.png
+[OK] Correlacion de features guardada en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/correlacion_features.png
+[OK] Boxplots por clase guardados en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/boxplot_por_clase.png
+
+>> A.4 Separacion Train/Test + Balanceo SMOTE ...
+
+------------------------------------------------------------
+SEPARACION TRAIN / TEST (estratificada)
+------------------------------------------------------------
+  Entrenamiento : 10,252 muestras
+  Prueba        :  2,563 muestras
+  Train target  :
+target_pobreza
+0    7076
+1    3176
+
+[OK] SMOTE aplicado (sampling_strategy=0.8)
+  Train original : 10,252 muestras
+  Train SMOTE    : 12,736 muestras
+  Distribucion post-SMOTE:
+target_pobreza
+0    7076
+1    5660
+
+============================================================
+  FASE B: MODELADO Y EXPLICABILIDAD
+============================================================
+
+>> B.1 Instanciando modelo XGBoost ...
+
+[OK] Modelo XGBClassifier instanciado
+  objective       : binary:logistic
+  n_estimators    : 300
+  max_depth       : 6
+  learning_rate   : 0.05
+  subsample       : 0.8
+  colsample_bytree: 0.8
+
+>> B.2 Validacion cruzada estratificada ...
+2026/04/07 15:26:04 INFO mlflow.store.db.utils: Creating initial MLflow database tables...
+2026/04/07 15:26:04 INFO mlflow.store.db.utils: Updating database tables
+2026/04/07 15:26:04 INFO mlflow.tracking.fluent: Experiment with name 'Prediccion_Pobreza_Bolivia' does not exist. Creating a new experiment.
+2026/04/07 15:26:05 WARNING mlflow.models.model: `artifact_path` is deprecated. Please use `name` instead.
+
+------------------------------------------------------------
+VALIDACION CRUZADA ESTRATIFICADA (5-Fold)
+------------------------------------------------------------
+  Fold 1: AUC-ROC = 0.8112
+  Fold 2: AUC-ROC = 0.8239
+  Fold 3: AUC-ROC = 0.8163
+  Fold 4: AUC-ROC = 0.8150
+  Fold 5: AUC-ROC = 0.8246
+  ----------------------------------------
+  Promedio: AUC-ROC = 0.8182 +/- 0.0052
+
+>> B.3 Entrenamiento final y evaluacion ...
+
+============================================================
+EVALUACION EN CONJUNTO DE PRUEBA
+============================================================
+
+  AUC-ROC en Test: 0.7598
+
+  Reporte de Clasificacion:
+  (Priorizando RECALL: el costo de excluir a un hogar
+   pobre (Falso Negativo) es criticamente alto)
+
+              precision    recall  f1-score   support
+
+No Pobre (0)     0.7812    0.8395    0.8093      1769
+   Pobre (1)     0.5710    0.4761    0.5192       794
+
+    accuracy                         0.7269      2563
+   macro avg     0.6761    0.6578    0.6642      2563
+weighted avg     0.7161    0.7269    0.7194      2563
+
+
+>> B.4 Generando graficos de evaluacion ...
+
+[OK] Curva ROC guardada en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/curva_roc.png
+[OK] Matriz de confusion guardada en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/matriz_confusion.png
+[OK] Importancia de features guardada en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/importancia_features.png
+[OK] Distribucion de probabilidades guardada en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/distribucion_probabilidades.png
+[OK] Curva Precision-Recall guardada en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/curva_precision_recall.png
+[OK] Comparacion CV vs Test guardada en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/comparacion_cv_test.png
+
+>> B.4 Generando graficos de explicabilidad (SHAP) ...
+
+[...] Calculando valores SHAP (TreeExplainer)...
+[OK] SHAP beeswarm guardado en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/shap_beeswarm.png
+[OK] SHAP bar plot guardado en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/shap_importancia_barras.png
+[OK] SHAP waterfall guardado en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/shap_waterfall.png
+
+>> B.5 Guardando modelo entrenado ...
+[OK] Modelo serializado en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/modelo_xgb.pkl
+[OK] Metricas exportadas en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/metrics.json
+
+============================================================
+  [OK] PIPELINE COMPLETADO EXITOSAMENTE
+  Resultados guardados en: /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output
+  Modelo listo para API:   /Users/enriquefernandez/Documents/7mosemestre/machine_learning/proyecto/pobreza-ML/output/modelo_xgb.pkl
+
+  Graficos generados:
+    - curva_roc.png
+    - matriz_confusion.png
+    - importancia_features.png
+    - distribucion_probabilidades.png
+    - curva_precision_recall.png
+    - comparacion_cv_test.png
+    - shap_beeswarm.png
+    - shap_importancia_barras.png
+    - shap_waterfall.png
+    - distribucion_target.png
+    - correlacion_features.png
+    - boxplot_por_clase.png
+============================================================

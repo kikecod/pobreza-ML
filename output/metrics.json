@@ -1,0 +1,5 @@
+{
+  "auc_cv": 0.8182,
+  "auc_test": 0.7598,
+  "threshold_auc": 0.84
+}
