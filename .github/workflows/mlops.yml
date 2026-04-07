@@ -1,0 +1,147 @@
+name: MLOps CI/CD - AWS ECS
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.10"
+  AUC_THRESHOLD: "0.84"
+  ECS_TASK_DEFINITION: ".aws/ecs-task-definition.json"
+  ECS_CONTAINER_NAME: "api-pobreza"
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+
+jobs:
+  ci-validate:
+    name: CI + Validacion de Modelo
+    runs-on: ubuntu-latest
+    outputs:
+      auc_value: ${{ steps.validate_auc.outputs.auc_value }}
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar pruebas (si existen)
+        run: |
+          if [ -d "tests" ]; then
+            pytest -q
+          else
+            echo "No existe carpeta tests/. Se omite pytest."
+          fi
+
+      - name: Validar umbral AUC para despliegue
+        id: validate_auc
+        env:
+          MODEL_AUC: ${{ vars.MODEL_AUC }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          threshold = float(os.getenv("AUC_THRESHOLD", "0.84"))
+          model_auc_env = os.getenv("MODEL_AUC", "").strip()
+          metrics_path = "output/metrics.json"
+
+          auc_value = None
+          source = None
+
+          if os.path.exists(metrics_path):
+              with open(metrics_path, "r", encoding="utf-8") as f:
+                  payload = json.load(f)
+              auc_value = payload.get("auc_test", payload.get("auc_cv"))
+              source = metrics_path
+          elif model_auc_env:
+              auc_value = float(model_auc_env)
+              source = "vars.MODEL_AUC"
+
+          if auc_value is None:
+              print("ERROR: No se encontro AUC para validar el despliegue.")
+              print("Define output/metrics.json desde entrenamiento o la variable vars.MODEL_AUC.")
+              sys.exit(1)
+
+          auc_value = float(auc_value)
+          print(f"AUC detectado ({source}): {auc_value:.4f}")
+          print(f"Umbral requerido: {threshold:.2f}")
+
+          if auc_value < threshold:
+              print(f"ERROR: AUC {auc_value:.4f} < {threshold:.2f}. Se bloquea despliegue.")
+              sys.exit(1)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as ghout:
+              ghout.write(f"auc_value={auc_value:.4f}\n")
+
+          print("OK: Modelo apto para despliegue.")
+          PY
+
+  deploy-aws-ecs:
+    name: Build + Deploy a AWS ECS
+    needs: ci-validate
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && (github.ref_name == 'main' || github.ref_name == 'master')
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Validar variables AWS requeridas
+        run: |
+          test -n "${AWS_REGION}" || (echo "Falta vars.AWS_REGION" && exit 1)
+          test -n "${ECR_REPOSITORY}" || (echo "Falta vars.ECR_REPOSITORY" && exit 1)
+          test -n "${ECS_CLUSTER}" || (echo "Falta vars.ECS_CLUSTER" && exit 1)
+          test -n "${ECS_SERVICE}" || (echo "Falta vars.ECS_SERVICE" && exit 1)
+          test -n "${{ secrets.AWS_ROLE_TO_ASSUME }}" || (echo "Falta secret AWS_ROLE_TO_ASSUME" && exit 1)
+
+      - name: Configurar credenciales AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login a Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Construir y publicar imagen en ECR
+        id: build-image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Inyectar imagen en task definition ECS
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Desplegar en ECS Service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true

@@ -8,6 +8,8 @@ validacion cruzada estratificada y evaluar en el conjunto de prueba.
 
 import numpy as np
 import pandas as pd
+import mlflow
+import mlflow.xgboost
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import classification_report, roc_auc_score
 from xgboost import XGBClassifier
@@ -111,24 +113,42 @@ def entrenar_y_evaluar(
     modelo         : XGBClassifier entrenado.
     y_pred_proba   : Probabilidades predichas para la clase positiva.
     """
-    modelo.fit(X_train, y_train)
-    y_pred = modelo.predict(X_test)
-    y_pred_proba = modelo.predict_proba(X_test)[:, 1]
-
-    auc_test = roc_auc_score(y_test, y_pred_proba)
-
-    print(f"\n{'='*60}")
-    print(f"EVALUACION EN CONJUNTO DE PRUEBA")
-    print(f"{'='*60}")
-    print(f"\n  AUC-ROC en Test: {auc_test:.4f}")
-    print(f"\n  Reporte de Clasificacion:")
-    print(f"  (Priorizando RECALL: el costo de excluir a un hogar")
-    print(f"   pobre (Falso Negativo) es criticamente alto)\n")
-    print(classification_report(
-        y_test,
-        y_pred,
-        target_names=["No Pobre (0)", "Pobre (1)"],
-        digits=4,
-    ))
+    
+    # === MLflow Tracking Setup ===
+    mlflow.set_experiment("Prediccion_Pobreza_Bolivia")
+    
+    with mlflow.start_run(run_name="XGBoost_Baseline_Modelo"):
+        mlflow.log_params(XGB_PARAMS)
+        mlflow.log_param("CV_Splits", CV_SPLITS)
+        mlflow.log_param("Random_Seed", SEED)
+        
+        modelo.fit(X_train, y_train)
+        y_pred = modelo.predict(X_test)
+        y_pred_proba = modelo.predict_proba(X_test)[:, 1]
+    
+        auc_test = roc_auc_score(y_test, y_pred_proba)
+        
+        # Registrar Metricas en MLflow
+        mlflow.log_metric("auc_test", auc_test)
+        
+        # Guardar el modelo en MLflow registry as un artefacto
+        mlflow.xgboost.log_model(modelo, "modelo_xgboost_bolivia")
+    
+        print(f"\n{'='*60}")
+        print(f"EVALUACION EN CONJUNTO DE PRUEBA")
+        print(f"{'='*60}")
+        print(f"\n  AUC-ROC en Test: {auc_test:.4f}")
+        print(f"\n  Reporte de Clasificacion:")
+        print(f"  (Priorizando RECALL: el costo de excluir a un hogar")
+        print(f"   pobre (Falso Negativo) es criticamente alto)\n")
+        print(classification_report(
+            y_test,
+            y_pred,
+            target_names=["No Pobre (0)", "Pobre (1)"],
+            digits=4,
+        ))
+        
+        if auc_test > 0.84:
+            print(f"\n[Exito!] AUC ({auc_test:.4f}) supero el umbral de 0.84 - ¡Aprobado para Produccion!")
 
     return modelo, y_pred_proba

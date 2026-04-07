@@ -25,6 +25,7 @@ Uso:
 
 import sys
 import io
+import json
 import warnings
 import joblib
 import numpy as np
@@ -157,6 +158,17 @@ def main():
     print("\n>> B.5 Guardando modelo entrenado ...")
     joblib.dump(modelo, MODEL_PATH)
     print(f"[OK] Modelo serializado en: {MODEL_PATH}")
+
+    # B.5 Exportar metricas para CI/CD (gate de despliegue)
+    metrics_path = f"{OUTPUT_DIR}/metrics.json"
+    metrics_payload = {
+        "auc_cv": float(np.round(auc_cv, 4)),
+        "auc_test": float(np.round(auc_test, 4)),
+        "threshold_auc": 0.84,
+    }
+    with open(metrics_path, "w", encoding="utf-8") as metrics_file:
+        json.dump(metrics_payload, metrics_file, indent=2)
+    print(f"[OK] Metricas exportadas en: {metrics_path}")
 
     # ==================================================================
     #  RESUMEN FINAL
