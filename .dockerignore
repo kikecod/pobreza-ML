@@ -10,6 +10,5 @@ venv/
 .env
 .env.*
 mlruns/
-output/*.png
 BD_EH2023/
 docs/
